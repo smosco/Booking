@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
 import { createError } from "../utils/error.js";
+import jwt from "jsonwebtoken";
 
 export const register = async (req, res, next) => {
   try {
@@ -38,10 +39,20 @@ export const login = async (req, res, next) => {
     if (!isPasswordCorrect)
       return next(createError(400, "Wrong password or username"));
 
-    const { password, isAdmin, ...otherDetails } = user._doc;
+    //비번이 맞다면 토큰 생성
+    const token = jwt.sign(
+      { id: user._id, isAdmin: user.isAdmin },
+      process.env.JWT
+    );
 
-    //정확하다면 user를 반환한다.
-    res.status(200).json({ ...otherDetails });
+    //정확하다면 user 정보 반환
+    const { password, isAdmin, ...otherDetails } = user._doc;
+    res
+      .cookie("access_token", token, {
+        httpOnly: true, //보안상의 이유? 이 config 설정은 잘 모름
+      })
+      .status(200)
+      .json({ ...otherDetails });
   } catch (err) {
     next(err);
   }
